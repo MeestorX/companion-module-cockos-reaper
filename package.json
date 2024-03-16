@@ -25,6 +25,7 @@
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^1.5.0",
+		"@types/node": "^18.11.9",
 		"husky": "^8.0.1",
 		"lint-staged": "^13.0.3",
 		"rimraf": "^3.0.2",

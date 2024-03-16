@@ -259,7 +259,7 @@
   dependencies:
     undici-types "~5.26.4"
 
-"@types/node@^18.16.3":
+"@types/node@^18.11.9", "@types/node@^18.16.3":
   version "18.19.24"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-18.19.24.tgz#707d8a4907e55901466e60e8f7a62bc6197ace95"
   integrity sha512-eghAz3gnbQbvnHqB+mgB2ZR3aH6RhdEmHGS48BnV75KceQPHqabkxKI0BbUSsqhqy2Ddhc2xD/VAR9ySZd57Lw==
