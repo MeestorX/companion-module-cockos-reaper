@@ -25,20 +25,24 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			regex: Regex.IP,
 		},
 		{
-			type: 'textinput',
+			type: 'number',
 			id: 'port',
 			label: 'Target Port',
 			width: 3,
 			tooltip: 'The port REAPER is listening to OSC on',
-			regex: Regex.SIGNED_NUMBER,
+			min: 1,
+			max: 65535,
+			default: 8000,
 		},
 		{
-			type: 'textinput',
+			type: 'number',
 			id: 'feedbackPort',
 			label: 'Feedback Port',
 			width: 3,
 			tooltip: 'The port REAPER is sending OSC to',
-			regex: Regex.SIGNED_NUMBER,
+			min: 1,
+			max: 65535,
+			default: 9000,
 		},
 		{
 			type: 'checkbox',
@@ -46,7 +50,7 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			label: 'Refresh On Start',
 			width: 3,
 			tooltip: 'If enabled, a "Control surface: Refresh all surfaces" command will be sent to reaper on start.',
-			default: false,
+			default: true,
 		},
 	]
 }
