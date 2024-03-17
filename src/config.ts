@@ -1,10 +1,10 @@
 import { Regex, SomeCompanionConfigField } from '@companion-module/base'
 
-export interface ReaperConfig {
-	host?: string
-	port?: number
-	feedbackPort?: number
-	refreshOnInit?: boolean
+export interface ModuleConfig {
+	host: string
+	port: number
+	feedbackPort: number
+	refreshOnInit: boolean
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {

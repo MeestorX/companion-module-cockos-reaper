@@ -1,4 +1,11 @@
-import { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import {
+	CompanionActionDefinition,
+	CompanionActionDefinitions,
+	CompanionActionEvent,
+	CompanionInputFieldNumber,
+	LogLevel,
+} from '@companion-module/base'
+import { OscMessage, Reaper, RecordMonitoringMode, Track, TrackFx } from 'reaper-osc'
 
 export enum ActionId {
 	Record = 'record',
@@ -40,41 +47,362 @@ export enum ActionId {
 	CustomAction = 'custom_action',
 }
 
-export function GetActionsList(): CompanionActionDefinitions {
+export interface ActionProps {
+	reaper: Reaper
+	log: (level: LogLevel, message: string) => void
+}
+
+export function GetActionsList(getProps: () => ActionProps): CompanionActionDefinitions {
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
-		[ActionId.Record]: undefined,
-		[ActionId.Play]: undefined,
-		[ActionId.Stop]: undefined,
-		[ActionId.Pause]: undefined,
-		[ActionId.AutoRecordArm]: undefined,
-		[ActionId.SoloReset]: undefined,
-		[ActionId.StartRewind]: undefined,
-		[ActionId.StopRewind]: undefined,
-		[ActionId.StartForward]: undefined,
-		[ActionId.StopForward]: undefined,
-		[ActionId.ToggleClick]: undefined,
-		[ActionId.ToggleRepeat]: undefined,
-		[ActionId.GotoMarker]: undefined,
-		[ActionId.GotoRegion]: undefined,
-		[ActionId.TrackMute]: undefined,
-		[ActionId.TrackSolo]: undefined,
-		[ActionId.TrackArm]: undefined,
-		[ActionId.TrackUnmute]: undefined,
-		[ActionId.TrackUnsolo]: undefined,
-		[ActionId.TrackUnarm]: undefined,
-		[ActionId.TrackMuteToggle]: undefined,
-		[ActionId.TrackSoloToggle]: undefined,
-		[ActionId.TrackArmToggle]: undefined,
-		[ActionId.TrackSelect]: undefined,
-		[ActionId.TrackDeselect]: undefined,
-		[ActionId.TrackMonitorEnable]: undefined,
-		[ActionId.TrackMonitorDisable]: undefined,
-		[ActionId.TrackFxBypass]: undefined,
-		[ActionId.TrackFxOpenUi]: undefined,
-		[ActionId.TrackFxUnbypass]: undefined,
-		[ActionId.TrackFxCloseUi]: undefined,
-		[ActionId.CustomAction]: undefined,
+		[ActionId.Record]: {
+			name: 'Record',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.record()
+			},
+		},
+		[ActionId.Play]: {
+			name: 'Play',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.play()
+			},
+		},
+		[ActionId.Stop]: {
+			name: 'Stop',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.stop()
+			},
+		},
+		[ActionId.Pause]: {
+			name: 'Pause',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.pause()
+			},
+		},
+		[ActionId.AutoRecordArm]: {
+			name: 'Autoarm Record',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				// TODO: replace with built-in when it is supported
+				const message = new OscMessage('/autorecarm')
+
+				props.reaper.sendOscMessage(message)
+			},
+		},
+		[ActionId.SoloReset]: {
+			name: 'Reset Solos',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				// TODO: replace with built-in when it is supported
+				const message = new OscMessage('/soloreset')
+
+				props.reaper.sendOscMessage(message)
+			},
+		},
+		[ActionId.StartRewind]: {
+			name: 'Rewind (Start)',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.startRewinding()
+			},
+		},
+		[ActionId.StopRewind]: {
+			name: 'Rewind (Stop)',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.stopRewinding()
+			},
+		},
+		[ActionId.StartForward]: {
+			name: 'Forward (Start)',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.startFastForwarding()
+			},
+		},
+		[ActionId.StopForward]: {
+			name: 'Forward (Stop)',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.stopFastForwarding()
+			},
+		},
+		[ActionId.ToggleClick]: {
+			name: 'Click/Metronome',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.toggleMetronome()
+			},
+		},
+		[ActionId.ToggleRepeat]: {
+			name: 'Toggle Repeat',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.transport.toggleRepeat()
+			},
+		},
+		[ActionId.GotoMarker]: {
+			name: 'Go To Marker',
+			options: [
+				{
+					type: 'number',
+					label: 'Marker Number',
+					id: 'marker',
+					default: 1,
+					min: 1,
+					max: 1024,
+				},
+			],
+			callback: (evt) => {
+				const props = getProps()
+
+				const message = new OscMessage(`/marker/${evt.options.marker}`)
+
+				// TODO: replace with built-in when it is supported
+				props.reaper.sendOscMessage(message)
+			},
+		},
+		[ActionId.GotoRegion]: {
+			name: 'Go To Region',
+			options: [
+				{
+					type: 'number',
+					label: 'Region Number',
+					id: 'region',
+					default: 1,
+					min: 1,
+					max: 1024,
+				},
+			],
+			callback: (evt) => {
+				const props = getProps()
+
+				const message = new OscMessage(`/region/${evt.options.region}`)
+
+				// TODO: replace with built-in when it is supported
+				props.reaper.sendOscMessage(message)
+			},
+		},
+
+		// Track Actions
+		[ActionId.TrackMute]: {
+			name: 'Track Mute',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.mute())
+			},
+		},
+		[ActionId.TrackSolo]: {
+			name: 'Track Solo',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.solo())
+			},
+		},
+		[ActionId.TrackArm]: {
+			name: 'Track Arm',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.recordArm())
+			},
+		},
+		[ActionId.TrackUnmute]: {
+			name: 'Track Unmute',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.unmute())
+			},
+		},
+		[ActionId.TrackUnsolo]: {
+			name: 'Track Unsolo',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.unsolo())
+			},
+		},
+		[ActionId.TrackUnarm]: {
+			name: 'Track Arm',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.recordDisarm())
+			},
+		},
+		[ActionId.TrackMuteToggle]: {
+			name: 'Track Mute Toggle',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.toggleMute())
+			},
+		},
+		[ActionId.TrackSoloToggle]: {
+			name: 'Track Solo Toggle',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.toggleSolo())
+			},
+		},
+		[ActionId.TrackArmToggle]: {
+			name: 'Track Record Arm Toggle',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.toggleRecordArm())
+			},
+		},
+		[ActionId.TrackSelect]: {
+			name: 'Track Select',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.select())
+			},
+		},
+		[ActionId.TrackDeselect]: {
+			name: 'Track Deselect',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.deselect())
+			},
+		},
+		[ActionId.TrackMonitorEnable]: {
+			name: 'Track Monitoring Enable',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.setMonitoringMode(RecordMonitoringMode.ON))
+			},
+		},
+		[ActionId.TrackMonitorDisable]: {
+			name: 'Track Monitoring Disable',
+			options: [trackOption()],
+			callback: (evt) => {
+				trackCallback(evt, getProps(), (track) => track.setMonitoringMode(RecordMonitoringMode.OFF))
+			},
+		},
+
+		// Track Fx actions
+		[ActionId.TrackFxBypass]: {
+			name: 'Track Fx Bypass',
+			options: [trackOption(), fxOption()],
+			callback: (evt) => {
+				trackFxCallback(evt, getProps(), (fx) => fx.bypass())
+			},
+		},
+		[ActionId.TrackFxOpenUi]: {
+			name: 'Track Fx Open Ui',
+			options: [trackOption(), fxOption()],
+			callback: (evt) => {
+				trackFxCallback(evt, getProps(), (fx) => fx.openUi())
+			},
+		},
+		[ActionId.TrackFxUnbypass]: {
+			name: 'Track Fx Unbypass',
+			options: [trackOption(), fxOption()],
+			callback: (evt) => {
+				trackFxCallback(evt, getProps(), (fx) => fx.unbypass())
+			},
+		},
+		[ActionId.TrackFxCloseUi]: {
+			name: 'Track Fx Close Ui',
+			options: [trackOption(), fxOption()],
+			callback: (evt) => {
+				trackFxCallback(evt, getProps(), (fx) => fx.closeUi())
+			},
+		},
+		[ActionId.CustomAction]: {
+			name: 'Custom Action',
+			options: [
+				{
+					type: 'textinput',
+					label: 'Action Command ID',
+					id: 'action_cmd_id',
+				},
+			],
+			callback: (evt) => {
+				const props = getProps()
+
+				if (!(typeof evt.options.action_cmd_id === 'number' || typeof evt.options.action_cmd_id === 'string')) {
+					return
+				}
+
+				props.reaper.triggerAction(evt.options.action_cmd_id)
+			},
+		},
 	}
 
 	return actions
+}
+
+function trackOption(): CompanionInputFieldNumber {
+	return {
+		type: 'number',
+		label: 'Track',
+		id: 'track',
+		default: 1,
+		min: 1,
+		max: 1024,
+	}
+}
+
+function fxOption(): CompanionInputFieldNumber {
+	return {
+		type: 'number',
+		label: 'Fx',
+		id: 'fx',
+		default: 1,
+		min: 1,
+		max: 1024,
+	}
+}
+
+function trackCallback(evt: CompanionActionEvent, props: ActionProps, callback: (track: Track) => void) {
+	const trackIndex = Number(evt.options.track) - 1
+
+	const track = props.reaper.tracks[trackIndex]
+
+	if (track === undefined) {
+		props.log('warn', `Track ${evt.options.track} not found`)
+		return
+	}
+
+	callback(track)
+}
+
+function trackFxCallback(evt: CompanionActionEvent, props: ActionProps, callback: (fx: TrackFx) => void) {
+	const fxIndex = Number(evt.options.fx) - 1
+
+	return trackCallback(evt, props, (track: Track) => {
+		const fx = track.fx[fxIndex]
+
+		if (fx === undefined) {
+			props.log('warn', `Fx ${evt.options.fx} not found`)
+			return
+		}
+
+		callback(fx)
+	})
 }

@@ -21,7 +21,8 @@
 		]
 	},
 	"dependencies": {
-		"@companion-module/base": "~1.7.0"
+		"@companion-module/base": "~1.7.0",
+		"reaper-osc": "^0.2.0"
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^1.5.0",

@@ -1,19 +1,26 @@
-import { EmptyUpgradeScript, InstanceBase, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
-import { GetConfigFields, ReaperConfig } from './config'
+import {
+	EmptyUpgradeScript,
+	InstanceBase,
+	InstanceStatus,
+	runEntrypoint,
+	SomeCompanionConfigField,
+} from '@companion-module/base'
+import { GetConfigFields, ModuleConfig } from './config'
 import { GetPresetsList } from './presets'
 import { GetFeedbacksList } from './feedback'
 import { GetActionsList } from './actions'
+import { Reaper, ReaperConfiguration } from 'reaper-osc'
 
-class ControllerInstance extends InstanceBase<ReaperConfig> {
-	private config: ReaperConfig
+class ControllerInstance extends InstanceBase<ModuleConfig> {
+	private reaper: Reaper | null
 
 	constructor(internal: unknown) {
 		super(internal)
 
-		this.config = {}
+		this.reaper = null
 	}
 
-	public async init(config: ReaperConfig): Promise<void> {
+	public async init(config: ModuleConfig): Promise<void> {
 		/**
  * 
  * 	var self = this;
@@ -31,17 +38,42 @@ class ControllerInstance extends InstanceBase<ReaperConfig> {
 	}
  */
 
-		this.config = config
-
-		await this.configUpdated(this.config)
+		await this.configUpdated(config)
 
 		this.setPresetDefinitions(GetPresetsList())
 		this.setFeedbackDefinitions(GetFeedbacksList())
-		this.setActionDefinitions(GetActionsList())
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		this.setActionDefinitions(
+			GetActionsList(() => ({ reaper: this.reaper!, log: (level, message) => this.log(level, message) }))
+		)
 	}
 
-	public async configUpdated(config: ReaperConfig): Promise<void> {
-		this.config = config
+	public async configUpdated(config: ModuleConfig): Promise<void> {
+		if (this.reaper !== null) {
+			this.reaper.stopOsc()
+			this.updateStatus(InstanceStatus.Disconnected)
+		}
+
+		const reaperConfig = new ReaperConfiguration()
+
+		reaperConfig.localAddress = '0.0.0.0'
+		reaperConfig.remoteAddress = config.host
+		reaperConfig.localPort = config.feedbackPort
+		reaperConfig.remotePort = config.port
+
+		this.reaper = new Reaper(reaperConfig)
+
+		this.updateStatus(InstanceStatus.Connecting)
+
+		this.reaper.onReady(() => {
+			this.updateStatus(InstanceStatus.Ok)
+
+			if (config.refreshOnInit) {
+				this.reaper?.refreshControlSurfaces()
+			}
+		})
+
+		this.reaper.startOsc()
 	}
 
 	public getConfigFields(): SomeCompanionConfigField[] {
@@ -53,4 +85,5 @@ class ControllerInstance extends InstanceBase<ReaperConfig> {
 	}
 }
 
+// TODO: upgrade scripts
 runEntrypoint(ControllerInstance, [EmptyUpgradeScript])
