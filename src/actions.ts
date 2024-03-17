@@ -248,7 +248,7 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			},
 		},
 		[ActionId.TrackUnarm]: {
-			name: 'Track Arm',
+			name: 'Track Unarm',
 			options: [trackOption()],
 			callback: (evt) => {
 				trackCallback(evt, getProps(), (track) => track.recordDisarm())
