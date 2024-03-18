@@ -342,14 +342,18 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 					id: 'action_cmd_id',
 				},
 			],
-			callback: (evt) => {
+			callback: async (evt, ctx) => {
 				const props = getProps()
 
-				if (!(typeof evt.options.action_cmd_id === 'number' || typeof evt.options.action_cmd_id === 'string')) {
+				let command_id = evt.options.action_cmd_id
+
+				if (typeof command_id !== 'string') {
 					return
 				}
 
-				props.reaper.triggerAction(evt.options.action_cmd_id)
+				command_id = await ctx.parseVariablesInString(command_id)
+
+				props.reaper.triggerAction(command_id)
 			},
 		},
 	}
