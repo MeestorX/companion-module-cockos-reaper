@@ -8,12 +8,11 @@ import {
 import { OscMessage, Reaper, RecordMonitoringMode, Track, TrackFx } from 'reaper-osc'
 
 export enum ActionId {
+	// Transport
 	Record = 'record',
 	Play = 'play',
 	Stop = 'stop',
 	Pause = 'pause',
-	AutoRecordArm = 'autorecarm',
-	SoloReset = 'soloreset',
 	StartRewind = 'start_rewind',
 	StopRewind = 'stop_rewind',
 	StartForward = 'start_forward',
@@ -44,7 +43,11 @@ export enum ActionId {
 	TrackFxUnbypass = 'track_fx_unbypass',
 	TrackFxCloseUi = 'track_fx_closeui',
 
+	// General
+	AutoRecordArm = 'autorecarm',
+	SoloReset = 'soloreset',
 	CustomAction = 'custom_action',
+	RefreshOrc = 'refresh_osc',
 }
 
 export interface ActionProps {
@@ -54,6 +57,7 @@ export interface ActionProps {
 
 export function GetActionsList(getProps: () => ActionProps): CompanionActionDefinitions {
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
+		// Transport
 		[ActionId.Record]: {
 			name: 'Record',
 			options: [],
@@ -88,30 +92,6 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 				const props = getProps()
 
 				props.reaper.transport.pause()
-			},
-		},
-		[ActionId.AutoRecordArm]: {
-			name: 'Autoarm Record',
-			options: [],
-			callback: () => {
-				const props = getProps()
-
-				// TODO: replace with built-in when it is supported
-				const message = new OscMessage('/autorecarm')
-
-				props.reaper.sendOscMessage(message)
-			},
-		},
-		[ActionId.SoloReset]: {
-			name: 'Reset Solos',
-			options: [],
-			callback: () => {
-				const props = getProps()
-
-				// TODO: replace with built-in when it is supported
-				const message = new OscMessage('/soloreset')
-
-				props.reaper.sendOscMessage(message)
 			},
 		},
 		[ActionId.StartRewind]: {
@@ -333,6 +313,32 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 				trackFxCallback(evt, getProps(), (fx) => fx.closeUi())
 			},
 		},
+
+		// General
+		[ActionId.AutoRecordArm]: {
+			name: 'Autoarm Record',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				// TODO: replace with built-in when it is supported
+				const message = new OscMessage('/autorecarm')
+
+				props.reaper.sendOscMessage(message)
+			},
+		},
+		[ActionId.SoloReset]: {
+			name: 'Reset Solos',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				// TODO: replace with built-in when it is supported
+				const message = new OscMessage('/soloreset')
+
+				props.reaper.sendOscMessage(message)
+			},
+		},
 		[ActionId.CustomAction]: {
 			name: 'Custom Action',
 			options: [
@@ -354,6 +360,15 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 				command_id = await ctx.parseVariablesInString(command_id)
 
 				props.reaper.triggerAction(command_id)
+			},
+		},
+		[ActionId.RefreshOrc]: {
+			name: 'Refresh OSC',
+			options: [],
+			callback: () => {
+				const props = getProps()
+
+				props.reaper.refreshControlSurfaces()
 			},
 		},
 	}
