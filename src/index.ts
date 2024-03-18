@@ -37,7 +37,7 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 
 	public async configUpdated(config: ModuleConfig): Promise<void> {
 		if (this._reaper !== null) {
-			this.disconnectOsc()
+			await this.disconnectOsc()
 		}
 
 		const reaperConfig = new ReaperConfiguration()
@@ -77,7 +77,7 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 	}
 
 	public async destroy(): Promise<void> {
-		this.disconnectOsc()
+		await this.disconnectOsc()
 	}
 
 	private afterMessageReceived: (message: OscMessage, handled: boolean) => void = () => {
@@ -85,34 +85,25 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		this.checkFeedbacks()
 	}
 
-	private async connectOsc(): Promise<void> {
+	private async connectOsc() {
 		if (this._reaper === null) {
 			this.log('error', 'Reaper is not configured')
 			return
 		}
 
-		const promise = new Promise<void>((resolve) => {
-			this.updateStatus(InstanceStatus.Connecting)
+		this.updateStatus(InstanceStatus.Connecting)
 
-			this._reaper?.onReady(() => {
-				this.log('info', 'Ready to receive messages from Reaper')
+		await this._reaper.start()
 
-				this.updateStatus(InstanceStatus.Ok)
-				resolve()
-			})
-
-			this._reaper?.startOsc()
-		})
-
-		return promise
+		this.updateStatus(InstanceStatus.Ok)
 	}
 
-	private disconnectOsc() {
+	private async disconnectOsc() {
 		if (this._reaper === null) {
 			return
 		}
 
-		this._reaper?.stopOsc()
+		await this._reaper.stop()
 		this.updateStatus(InstanceStatus.Disconnected)
 		this.log('info', 'Stopped listening to Reaper')
 	}

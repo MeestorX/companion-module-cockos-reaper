@@ -2017,10 +2017,10 @@ randombytes@^2.1.0:
   dependencies:
     safe-buffer "^5.1.0"
 
-reaper-osc@^0.2.0:
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/reaper-osc/-/reaper-osc-0.2.0.tgz#69686b7f67f7d1e885ab7b6c343fc4c54d3c029d"
-  integrity sha512-WyihNBfMExI1JSmf+TWKoTBclb0nKW6N8QEhuzaMAWo9RucOomNYron/52ZWK6PAKnjYB3ev9MWRw2kiUa7q5g==
+reaper-osc@0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/reaper-osc/-/reaper-osc-0.3.1.tgz#ee524437914e132b77abbcc2995c183daf15f66c"
+  integrity sha512-zsmPtUeM5wgA4u/itJUAmUTfpM+rHb/AGz7W3IraAQPsdUjUglYsA7U8uhqcP8f8hpjIJ+1uaZIZYtn1X88sIg==
   dependencies:
     osc "^2.4.1"
     ste-signals "^2.1.7"
