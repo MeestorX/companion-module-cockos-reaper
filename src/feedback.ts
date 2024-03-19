@@ -1,5 +1,6 @@
 import { CompanionBooleanFeedbackDefinition, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
 import { ModuleContext } from './index'
+import { FloatMessageHandler, IMessageHandler } from 'reaper-osc'
 
 export enum FeedbackId {
 	PlayStatus = 'playStatus',
@@ -23,8 +24,20 @@ export enum FeedbackId {
 	TrackFxOpenUi = 'track_fx_openui',
 }
 
+export type FeedbackBindings = {
+	[id: string]: () => void
+}
+
+export type CustomMessageFeedback = { handler: IMessageHandler; getState: () => boolean }
+
+export type CustomMessageFeedbacks = {
+	[id: string]: CustomMessageFeedback
+}
+
 export interface FeedbackContext extends ModuleContext {
-	checkFeedback: (feedbackId: string) => void
+	readonly checkFeedback: (id: string) => void
+	readonly bindings: FeedbackBindings
+	readonly customMessageFeedbacks: CustomMessageFeedbacks
 }
 
 export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFeedbackDefinitions {
@@ -59,12 +72,16 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 			subscribe: (evt) => {
 				const context = getContext()
 
-				context.reaper.transport.onPropertyChanged('isPlaying', () => {
+				const unsubscribe = context.reaper.transport.onPropertyChanged('isPlaying', () => {
 					context.checkFeedback(evt.id)
 				})
+
+				AddBinding(context, evt.id, unsubscribe)
 			},
-			unsubscribe: () => {
-				// TODO: Unsubscribe from the property changed event
+			unsubscribe: (evt) => {
+				const context = getContext()
+
+				Unbind(context, evt.id)
 			},
 		},
 		[FeedbackId.StopStatus]: undefined,
@@ -73,7 +90,69 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 		[FeedbackId.ForwardStatus]: undefined,
 		[FeedbackId.RepeatStatus]: undefined,
 		[FeedbackId.ClickStatus]: undefined,
-		[FeedbackId.CustomMessage]: undefined,
+		[FeedbackId.CustomMessage]: {
+			type: 'boolean',
+			name: 'Change style based on a custom OSC message',
+			description: 'Change style based on a custom OSC message',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 255, 0),
+			},
+			options: [
+				{
+					type: 'textinput',
+					label: 'Message',
+					id: 'msg',
+					default: '/repeat',
+				},
+				{
+					type: 'dropdown',
+					label: 'Message Type',
+					id: 'type',
+					default: 'f',
+					choices: [
+						{ id: 'f', label: 'Number' },
+						{ id: 's', label: 'String' },
+					],
+				},
+				{
+					type: 'textinput',
+					label: 'Value',
+					id: 'value',
+					default: '1',
+				},
+			],
+			callback: (evt) => {
+				const context = getContext()
+
+				const feedback = context.customMessageFeedbacks[evt.id]
+
+				return feedback.getState()
+			},
+			subscribe: (evt) => {
+				const context = getContext()
+
+				const state: CustomMessageState = { state: false }
+
+				// TODO: create handler based on type
+				// TODO: clear handlers on destroy
+				const handler = CustomFloatFeedbackHandler(<string>evt.options.msg, <string>evt.options.value, (result) => {
+					if (state.state === result) {
+						return
+					}
+
+					state.state = result
+					context.checkFeedback(evt.id)
+				})
+
+				context.customMessageFeedbacks[evt.id] = { handler: handler, getState: () => state.state }
+			},
+			unsubscribe: (evt) => {
+				const context = getContext()
+
+				delete context.customMessageFeedbacks[evt.id]
+			},
+		},
 		[FeedbackId.TrackMute]: undefined,
 		[FeedbackId.TrackSolo]: undefined,
 		[FeedbackId.TrackRecordArm]: undefined,
@@ -84,4 +163,29 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 	}
 
 	return feedbacks
+}
+
+type CustomMessageState = {
+	state: boolean
+}
+
+function CustomFloatFeedbackHandler(
+	address: string,
+	value: string,
+	callback: (state: boolean) => void
+): IMessageHandler {
+	const number = parseFloat(value)
+
+	return new FloatMessageHandler(address, (messageValue) => {
+		callback(number === messageValue)
+	})
+}
+
+function AddBinding(context: FeedbackContext, feedbackId: string, unsubscribe: () => void) {
+	context.bindings[feedbackId] = unsubscribe
+}
+
+function Unbind(context: FeedbackContext, feedbackId: string) {
+	context.bindings[feedbackId]()
+	delete context.bindings[feedbackId]
 }

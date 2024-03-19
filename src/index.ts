@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-	CompanionVariableDefinition,
 	CompanionVariableValues,
 	EmptyUpgradeScript,
 	InstanceBase,
@@ -9,7 +9,7 @@ import {
 } from '@companion-module/base'
 import { GetConfigFields, ModuleConfig } from './config'
 import { GetPresetsList } from './presets'
-import { GetFeedbacksList } from './feedback'
+import { CustomMessageFeedbacks, FeedbackBindings, GetFeedbacksList } from './feedback'
 import { GetActionsList } from './actions'
 import { LogLevel, OscMessage, Reaper, ReaperConfiguration } from 'reaper-osc'
 import { GetVariableDefinitions, ReaperProperty } from './variables'
@@ -17,6 +17,8 @@ import { GetVariableDefinitions, ReaperProperty } from './variables'
 class ControllerInstance extends InstanceBase<ModuleConfig> {
 	private _reaper: Reaper | null
 	private _unsubscribeVariables: Unsubscribe[] = []
+	private _feedbackBindings: FeedbackBindings = {}
+	private _customMessageFeedbacks: CustomMessageFeedbacks = {}
 
 	constructor(internal: unknown) {
 		super(internal)
@@ -28,17 +30,17 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		await this.configUpdated(config)
 
 		this.setActionDefinitions(
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			GetActionsList(() => ({ reaper: this._reaper!, log: (level, message) => this.log(level, message) }))
 		)
 
 		this.setPresetDefinitions(GetPresetsList())
 		this.setFeedbackDefinitions(
 			GetFeedbacksList(() => ({
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				reaper: this._reaper!,
 				log: (level, message) => this.log(level, message),
 				checkFeedback: (feedbackId) => this.checkFeedbacksById(feedbackId),
+				bindings: this._feedbackBindings,
+				customMessageFeedbacks: this._customMessageFeedbacks,
 			}))
 		)
 	}
@@ -47,6 +49,7 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		if (this._reaper !== null) {
 			await this.disconnectOsc()
 			this.unbindVariables()
+			this.unbindFeedbacks()
 		}
 
 		const reaperConfig = new ReaperConfiguration()
@@ -60,16 +63,12 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		reaperConfig.remotePort = config.port
 
 		reaperConfig.afterMessageReceived = (message, handled) => {
-			this.afterMessageReceived(message, handled)
+			this.handleCustomMessages(message, handled)
 		}
 
 		this._reaper = new Reaper(reaperConfig)
 
-		this.bindVariables(
-			this._reaper,
-			(variables: CompanionVariableDefinition[]) => this.setVariableDefinitions(variables),
-			(values: CompanionVariableValues) => this.setVariableValues(values)
-		)
+		this.bindVariables()
 
 		this.log('debug', `Reaper Configuration: ${JSON.stringify(reaperConfig, null, 2)}`)
 
@@ -88,10 +87,13 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 	public async destroy(): Promise<void> {
 		await this.disconnectOsc()
 		this.unbindVariables()
+		this.unbindFeedbacks()
 	}
 
-	private afterMessageReceived: (message: OscMessage, handled: boolean) => void = () => {
-		// TODO: implement handlers for custom feedbacks
+	private handleCustomMessages(message: OscMessage, _: boolean) {
+		Object.values(this._customMessageFeedbacks).forEach((feedback) => {
+			feedback.handler.handle(message)
+		})
 	}
 
 	private async connectOsc() {
@@ -117,25 +119,30 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		this.log('info', 'Stopped listening to Reaper')
 	}
 
-	private bindVariables(
-		reaper: Reaper,
-		setVariableDefinitions: (variables: CompanionVariableDefinition[]) => void,
-		setVariableValues: (values: CompanionVariableValues) => void
-	): void {
+	private unbindFeedbacks(): void {
+		const bindings = this._feedbackBindings
+
+		for (const entry of Object.entries(bindings)) {
+			entry[1]()
+			delete bindings[entry[0]]
+		}
+	}
+
+	private bindVariables(): void {
 		const variables = GetVariableDefinitions()
 
 		const unsubscribes: Unsubscribe[] = []
 
-		setVariableDefinitions(variables)
+		this.setVariableDefinitions(variables)
 
 		const variableValues: CompanionVariableValues = {}
 
 		variables.forEach((variable) => {
-			const property = variable.getProperty(reaper)
+			const property = variable.getProperty(this._reaper!)
 
 			// Bind the variable to the property
 			const unsub = property.item.onPropertyChanged(property.property, () => {
-				setVariableValues({
+				this.setVariableValues({
 					[variable.variableId]: this.getCurrentVariableValue(property, variable.valueConverter),
 				})
 			})
@@ -146,7 +153,7 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 			variableValues[variable.variableId] = this.getCurrentVariableValue(property, variable.valueConverter)
 		})
 
-		setVariableValues(variableValues)
+		this.setVariableValues(variableValues)
 
 		this._unsubscribeVariables = unsubscribes
 	}
