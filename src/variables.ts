@@ -20,7 +20,7 @@ export function GetVariableDefinitions(): ReaperPropertyVariableDefinition[] {
 
 	return variables
 }
-
+/*
 function VariableDefinitions(): ReaperPropertyVariableDefinition[] {
 	const variables: ReaperPropertyVariableDefinition[] = [
 		{
@@ -31,7 +31,7 @@ function VariableDefinitions(): ReaperPropertyVariableDefinition[] {
 	]
 	return variables
 }
-
+*/
 function LegacyVariableDefinitions(): ReaperPropertyVariableDefinition[] {
 	const variables: ReaperPropertyVariableDefinition[] = [
 		{
