@@ -3,9 +3,9 @@ import {
 	CompanionActionDefinitions,
 	CompanionActionEvent,
 	CompanionInputFieldNumber,
-	LogLevel,
 } from '@companion-module/base'
-import { OscMessage, Reaper, RecordMonitoringMode, Track, TrackFx } from 'reaper-osc'
+import { FloatMessage, OscMessage, RecordMonitoringMode, StringMessage, Track, TrackFx } from 'reaper-osc'
+import { ModuleContext } from './index'
 
 export enum ActionId {
 	// Transport
@@ -48,21 +48,19 @@ export enum ActionId {
 	SoloReset = 'soloreset',
 	CustomAction = 'custom_action',
 	RefreshOrc = 'refresh_osc',
+	CustomMessage = 'custom_message',
 }
 
-export interface ActionProps {
-	reaper: Reaper
-	log: (level: LogLevel, message: string) => void
-}
+export type ActionContext = ModuleContext
 
-export function GetActionsList(getProps: () => ActionProps): CompanionActionDefinitions {
+export function GetActionsList(getContext: () => ActionContext): CompanionActionDefinitions {
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
 		// Transport
 		[ActionId.Record]: {
 			name: 'Record',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const props = getContext()
 
 				props.reaper.transport.record()
 			},
@@ -71,7 +69,7 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Play',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const props = getContext()
 
 				props.reaper.transport.play()
 			},
@@ -80,7 +78,7 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Stop',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const props = getContext()
 
 				props.reaper.transport.stop()
 			},
@@ -89,7 +87,7 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Pause',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const props = getContext()
 
 				props.reaper.transport.pause()
 			},
@@ -98,7 +96,7 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Rewind (Start)',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const props = getContext()
 
 				props.reaper.transport.startRewinding()
 			},
@@ -107,45 +105,45 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Rewind (Stop)',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
-				props.reaper.transport.stopRewinding()
+				context.reaper.transport.stopRewinding()
 			},
 		},
 		[ActionId.StartForward]: {
 			name: 'Forward (Start)',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
-				props.reaper.transport.startFastForwarding()
+				context.reaper.transport.startFastForwarding()
 			},
 		},
 		[ActionId.StopForward]: {
 			name: 'Forward (Stop)',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
-				props.reaper.transport.stopFastForwarding()
+				context.reaper.transport.stopFastForwarding()
 			},
 		},
 		[ActionId.ToggleClick]: {
 			name: 'Click/Metronome',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
-				props.reaper.toggleMetronome()
+				context.reaper.toggleMetronome()
 			},
 		},
 		[ActionId.ToggleRepeat]: {
 			name: 'Toggle Repeat',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
-				props.reaper.transport.toggleRepeat()
+				context.reaper.transport.toggleRepeat()
 			},
 		},
 		[ActionId.GotoMarker]: {
@@ -161,12 +159,12 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 				},
 			],
 			callback: (evt) => {
-				const props = getProps()
+				const context = getContext()
 
 				const message = new OscMessage(`/marker/${evt.options.marker}`)
 
 				// TODO: replace with built-in when it is supported
-				props.reaper.sendOscMessage(message)
+				context.reaper.sendOscMessage(message)
 			},
 		},
 		[ActionId.GotoRegion]: {
@@ -182,12 +180,12 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 				},
 			],
 			callback: (evt) => {
-				const props = getProps()
+				const context = getContext()
 
 				const message = new OscMessage(`/region/${evt.options.region}`)
 
 				// TODO: replace with built-in when it is supported
-				props.reaper.sendOscMessage(message)
+				context.reaper.sendOscMessage(message)
 			},
 		},
 
@@ -196,91 +194,91 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Track Mute',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.mute())
+				trackCallback(evt, getContext(), (track) => track.mute())
 			},
 		},
 		[ActionId.TrackSolo]: {
 			name: 'Track Solo',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.solo())
+				trackCallback(evt, getContext(), (track) => track.solo())
 			},
 		},
 		[ActionId.TrackArm]: {
 			name: 'Track Arm',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.recordArm())
+				trackCallback(evt, getContext(), (track) => track.recordArm())
 			},
 		},
 		[ActionId.TrackUnmute]: {
 			name: 'Track Unmute',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.unmute())
+				trackCallback(evt, getContext(), (track) => track.unmute())
 			},
 		},
 		[ActionId.TrackUnsolo]: {
 			name: 'Track Unsolo',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.unsolo())
+				trackCallback(evt, getContext(), (track) => track.unsolo())
 			},
 		},
 		[ActionId.TrackUnarm]: {
 			name: 'Track Unarm',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.recordDisarm())
+				trackCallback(evt, getContext(), (track) => track.recordDisarm())
 			},
 		},
 		[ActionId.TrackMuteToggle]: {
 			name: 'Track Mute Toggle',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.toggleMute())
+				trackCallback(evt, getContext(), (track) => track.toggleMute())
 			},
 		},
 		[ActionId.TrackSoloToggle]: {
 			name: 'Track Solo Toggle',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.toggleSolo())
+				trackCallback(evt, getContext(), (track) => track.toggleSolo())
 			},
 		},
 		[ActionId.TrackArmToggle]: {
 			name: 'Track Record Arm Toggle',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.toggleRecordArm())
+				trackCallback(evt, getContext(), (track) => track.toggleRecordArm())
 			},
 		},
 		[ActionId.TrackSelect]: {
 			name: 'Track Select',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.select())
+				trackCallback(evt, getContext(), (track) => track.select())
 			},
 		},
 		[ActionId.TrackDeselect]: {
 			name: 'Track Deselect',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.deselect())
+				trackCallback(evt, getContext(), (track) => track.deselect())
 			},
 		},
 		[ActionId.TrackMonitorEnable]: {
 			name: 'Track Monitoring Enable',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.setMonitoringMode(RecordMonitoringMode.ON))
+				trackCallback(evt, getContext(), (track) => track.setMonitoringMode(RecordMonitoringMode.ON))
 			},
 		},
 		[ActionId.TrackMonitorDisable]: {
 			name: 'Track Monitoring Disable',
 			options: [trackOption()],
 			callback: (evt) => {
-				trackCallback(evt, getProps(), (track) => track.setMonitoringMode(RecordMonitoringMode.OFF))
+				trackCallback(evt, getContext(), (track) => track.setMonitoringMode(RecordMonitoringMode.OFF))
 			},
 		},
 
@@ -289,28 +287,28 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Track Fx Bypass',
 			options: [trackOption(), fxOption()],
 			callback: (evt) => {
-				trackFxCallback(evt, getProps(), (fx) => fx.bypass())
+				trackFxCallback(evt, getContext(), (fx) => fx.bypass())
 			},
 		},
 		[ActionId.TrackFxOpenUi]: {
 			name: 'Track Fx Open Ui',
 			options: [trackOption(), fxOption()],
 			callback: (evt) => {
-				trackFxCallback(evt, getProps(), (fx) => fx.openUi())
+				trackFxCallback(evt, getContext(), (fx) => fx.openUi())
 			},
 		},
 		[ActionId.TrackFxUnbypass]: {
 			name: 'Track Fx Unbypass',
 			options: [trackOption(), fxOption()],
 			callback: (evt) => {
-				trackFxCallback(evt, getProps(), (fx) => fx.unbypass())
+				trackFxCallback(evt, getContext(), (fx) => fx.unbypass())
 			},
 		},
 		[ActionId.TrackFxCloseUi]: {
 			name: 'Track Fx Close Ui',
 			options: [trackOption(), fxOption()],
 			callback: (evt) => {
-				trackFxCallback(evt, getProps(), (fx) => fx.closeUi())
+				trackFxCallback(evt, getContext(), (fx) => fx.closeUi())
 			},
 		},
 
@@ -319,28 +317,29 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 			name: 'Autoarm Record',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
 				// TODO: replace with built-in when it is supported
 				const message = new OscMessage('/autorecarm')
 
-				props.reaper.sendOscMessage(message)
+				context.reaper.sendOscMessage(message)
 			},
 		},
 		[ActionId.SoloReset]: {
 			name: 'Reset Solos',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
 				// TODO: replace with built-in when it is supported
 				const message = new OscMessage('/soloreset')
 
-				props.reaper.sendOscMessage(message)
+				context.reaper.sendOscMessage(message)
 			},
 		},
 		[ActionId.CustomAction]: {
 			name: 'Custom Action',
+			description: 'Execute a Reaper action',
 			options: [
 				{
 					type: 'textinput',
@@ -349,7 +348,7 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 				},
 			],
 			callback: async (evt, ctx) => {
-				const props = getProps()
+				const context = getContext()
 
 				let command_id = evt.options.action_cmd_id
 
@@ -359,16 +358,80 @@ export function GetActionsList(getProps: () => ActionProps): CompanionActionDefi
 
 				command_id = await ctx.parseVariablesInString(command_id)
 
-				props.reaper.triggerAction(command_id)
+				context.reaper.triggerAction(command_id)
+			},
+		},
+		[ActionId.CustomMessage]: {
+			name: 'Custom OSC Message',
+			description: 'Send a custom OSC message',
+			options: [
+				{
+					type: 'textinput',
+					label: 'OSC Address',
+					id: 'address',
+				},
+				{
+					type: 'dropdown',
+					label: 'Message Type',
+					id: 'type',
+					default: 'f',
+					choices: [
+						{ id: 'f', label: 'Number' },
+						{ id: 's', label: 'String' },
+						{ id: 't', label: 'Toggle' },
+					],
+				},
+				{
+					type: 'textinput',
+					label: 'Value',
+					id: 'value',
+					isVisible: (opts) => {
+						switch (opts.type) {
+							case 'f':
+							case 's':
+								return true
+							default:
+								return false
+						}
+					},
+				},
+			],
+			callback: async (evt, ctx) => {
+				const context = getContext()
+
+				let address = evt.options.address
+				let value = evt.options.value
+
+				if (typeof address !== 'string' || typeof value !== 'string') {
+					return
+				}
+
+				address = await ctx.parseVariablesInString(address)
+				value = await ctx.parseVariablesInString(value)
+
+				let message: OscMessage
+
+				switch (evt.options.type) {
+					case 'f':
+						message = new FloatMessage(address, Number(value))
+						break
+					case 's':
+						message = new StringMessage(address, value)
+						break
+					default:
+						return
+				}
+
+				context.reaper.sendOscMessage(message)
 			},
 		},
 		[ActionId.RefreshOrc]: {
 			name: 'Refresh OSC',
 			options: [],
 			callback: () => {
-				const props = getProps()
+				const context = getContext()
 
-				props.reaper.refreshControlSurfaces()
+				context.reaper.refreshControlSurfaces()
 			},
 		},
 	}
@@ -381,8 +444,9 @@ function trackOption(): CompanionInputFieldNumber {
 		type: 'number',
 		label: 'Track',
 		id: 'track',
+		tooltip: 'Use 0 to apply this action to MASTER',
 		default: 1,
-		min: 1,
+		min: 0,
 		max: 1024,
 	}
 }
@@ -398,27 +462,27 @@ function fxOption(): CompanionInputFieldNumber {
 	}
 }
 
-function trackCallback(evt: CompanionActionEvent, props: ActionProps, callback: (track: Track) => void) {
-	const trackIndex = Number(evt.options.track) - 1
+function trackCallback(evt: CompanionActionEvent, context: ActionContext, callback: (track: Track) => void) {
+	const trackNumber = Number(evt.options.track)
 
-	const track = props.reaper.tracks[trackIndex]
+	const track = trackNumber === 0 ? context.reaper.master : context.reaper.tracks[trackNumber - 1]
 
 	if (track === undefined) {
-		props.log('warn', `Track ${evt.options.track} not found`)
+		context.log('warn', `Track ${evt.options.track} not found`)
 		return
 	}
 
 	callback(track)
 }
 
-function trackFxCallback(evt: CompanionActionEvent, props: ActionProps, callback: (fx: TrackFx) => void) {
+function trackFxCallback(evt: CompanionActionEvent, context: ActionContext, callback: (fx: TrackFx) => void) {
 	const fxIndex = Number(evt.options.fx) - 1
 
-	return trackCallback(evt, props, (track: Track) => {
+	return trackCallback(evt, context, (track: Track) => {
 		const fx = track.fx[fxIndex]
 
 		if (fx === undefined) {
-			props.log('warn', `Fx ${evt.options.fx} not found`)
+			context.log('warn', `Fx ${evt.options.fx} not found`)
 			return
 		}
 

@@ -1,6 +1,6 @@
 import { CompanionVariableDefinition } from '@companion-module/base'
 import { Reaper, Track, Transport } from 'reaper-osc'
-import { INotifyPropertyChanged } from 'reaper-osc/dist/Notify'
+import { INotifyPropertyChanged } from 'reaper-osc'
 
 export type ReaperProperty = {
 	item: INotifyPropertyChanged
@@ -62,7 +62,7 @@ function LegacyVariableDefinitions(): ReaperPropertyVariableDefinition[] {
 		{
 			variableId: 'clickStatus',
 			name: 'Click Status',
-			getProperty: NotifyPropertySelector<Transport>((reaper) => reaper.transport, 'isRewinding'),
+			getProperty: NotifyPropertySelector<Reaper>((reaper) => reaper, 'isMetronomeEnabled'),
 			valueConverter: (value) => (value ? 'Active' : 'Inactive'),
 		},
 	]
@@ -83,48 +83,48 @@ function LegacyTrackVariables(trackIndex: number): ReaperPropertyVariableDefinit
 
 	return [
 		{
-			variableId: TrackVariableId(trackNumber, 'Mute'),
-			name: TrackVariableName(trackNumber, 'Muted'),
+			variableId: LegacyTrackVariableId(trackNumber, 'Mute'),
+			name: LegacyTrackVariableName(trackNumber, 'Muted'),
 			getProperty: NotifyPropertySelector<Track>((reaper) => reaper.tracks[trackIndex], 'isMuted'),
 			valueConverter: (value) => (value ? 'Muted' : 'Not Muted'),
 		},
 		{
-			variableId: TrackVariableId(trackNumber, 'Solo'),
-			name: TrackVariableName(trackNumber, 'Soloed'),
+			variableId: LegacyTrackVariableId(trackNumber, 'Solo'),
+			name: LegacyTrackVariableName(trackNumber, 'Soloed'),
 			getProperty: NotifyPropertySelector<Track>((reaper) => reaper.tracks[trackIndex], 'isSoloed'),
 			valueConverter: (value) => (value ? 'Soloed' : 'Not Soloed'),
 		},
 		{
-			variableId: TrackVariableId(trackNumber, 'Recarm'),
-			name: TrackVariableName(trackNumber, 'Armed for Record'),
+			variableId: LegacyTrackVariableId(trackNumber, 'Recarm'),
+			name: LegacyTrackVariableName(trackNumber, 'Armed for Record'),
 			getProperty: NotifyPropertySelector<Track>((reaper) => reaper.tracks[trackIndex], 'isRecordArmed'),
 			valueConverter: (value) => (value ? 'Record Armed' : 'Record Disarmed'),
 		},
 		{
-			variableId: TrackVariableId(trackNumber, 'Select'),
-			name: TrackVariableName(trackNumber, 'Selected'),
+			variableId: LegacyTrackVariableId(trackNumber, 'Select'),
+			name: LegacyTrackVariableName(trackNumber, 'Selected'),
 			getProperty: NotifyPropertySelector<Track>((reaper) => reaper.tracks[trackIndex], 'isSelected'),
 			valueConverter: (value) => (value ? 'Selected' : 'Not Selected'),
 		},
 		{
-			variableId: TrackVariableId(trackNumber, 'Name'),
-			name: TrackVariableName(trackNumber, 'Name'),
+			variableId: LegacyTrackVariableId(trackNumber, 'Name'),
+			name: LegacyTrackVariableName(trackNumber, 'Name'),
 			getProperty: NotifyPropertySelector<Track>((reaper) => reaper.tracks[trackIndex], 'name'),
 		},
 		{
-			variableId: TrackVariableId(trackNumber, 'Monitor'),
-			name: TrackVariableName(trackNumber, 'Monitoring'),
+			variableId: LegacyTrackVariableId(trackNumber, 'Monitor'),
+			name: LegacyTrackVariableName(trackNumber, 'Monitoring'),
 			getProperty: NotifyPropertySelector<Track>((reaper) => reaper.tracks[trackIndex], 'recordMonitoring'),
 			valueConverter: (value) => (value ? 'Monitoring' : 'Not Monitoring'),
 		},
 	]
 }
 
-function TrackVariableId(trackNumber: number, id: string): string {
+function LegacyTrackVariableId(trackNumber: number, id: string): string {
 	return `track${trackNumber}${id}`
 }
 
-function TrackVariableName(trackNumber: number, name: string): string {
+function LegacyTrackVariableName(trackNumber: number, name: string): string {
 	return `Track ${trackNumber} ${name}`
 }
 

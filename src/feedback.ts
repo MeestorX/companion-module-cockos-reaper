@@ -1,4 +1,5 @@
-import { CompanionFeedbackDefinition, CompanionFeedbackDefinitions } from '@companion-module/base'
+import { CompanionBooleanFeedbackDefinition, CompanionFeedbackDefinitions, combineRgb } from '@companion-module/base'
+import { ModuleContext } from './index'
 
 export enum FeedbackId {
 	PlayStatus = 'playStatus',
@@ -22,9 +23,50 @@ export enum FeedbackId {
 	TrackFxOpenUi = 'track_fx_openui',
 }
 
-export function GetFeedbacksList(): CompanionFeedbackDefinitions {
-	const feedbacks: { [id in FeedbackId]: CompanionFeedbackDefinition | undefined } = {
-		[FeedbackId.PlayStatus]: undefined,
+export interface FeedbackContext extends ModuleContext {
+	checkFeedback: (feedbackId: string) => void
+}
+
+export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFeedbackDefinitions {
+	const feedbacks: { [id in FeedbackId]: CompanionBooleanFeedbackDefinition | undefined } = {
+		[FeedbackId.PlayStatus]: {
+			type: 'boolean',
+			name: 'Change style based on Play/Pause status',
+			description: 'Change style based on Play/Pause status',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 183, 0),
+			},
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Status',
+					id: 'playPause',
+					default: 'Playing',
+					choices: [
+						{ id: 'Playing', label: 'Playing' },
+						{ id: 'Paused', label: 'Paused' },
+					],
+				},
+			],
+			callback: (evt) => {
+				const context = getContext()
+
+				const playing = evt.options.playPause === 'Playing'
+
+				return context.reaper.transport.isPlaying == playing
+			},
+			subscribe: (evt) => {
+				const context = getContext()
+
+				context.reaper.transport.onPropertyChanged('isPlaying', () => {
+					context.checkFeedback(evt.id)
+				})
+			},
+			unsubscribe: () => {
+				// TODO: Unsubscribe from the property changed event
+			},
+		},
 		[FeedbackId.StopStatus]: undefined,
 		[FeedbackId.RecordStatus]: undefined,
 		[FeedbackId.RewindStatus]: undefined,

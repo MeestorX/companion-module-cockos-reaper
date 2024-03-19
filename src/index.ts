@@ -11,11 +11,12 @@ import { GetConfigFields, ModuleConfig } from './config'
 import { GetPresetsList } from './presets'
 import { GetFeedbacksList } from './feedback'
 import { GetActionsList } from './actions'
-import { OscMessage, Reaper, ReaperConfiguration } from 'reaper-osc'
+import { LogLevel, OscMessage, Reaper, ReaperConfiguration } from 'reaper-osc'
 import { GetVariableDefinitions, ReaperProperty } from './variables'
 
 class ControllerInstance extends InstanceBase<ModuleConfig> {
 	private _reaper: Reaper | null
+	private _unsubscribeVariables: Unsubscribe[] = []
 
 	constructor(internal: unknown) {
 		super(internal)
@@ -32,12 +33,20 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		)
 
 		this.setPresetDefinitions(GetPresetsList())
-		this.setFeedbackDefinitions(GetFeedbacksList())
+		this.setFeedbackDefinitions(
+			GetFeedbacksList(() => ({
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				reaper: this._reaper!,
+				log: (level, message) => this.log(level, message),
+				checkFeedback: (feedbackId) => this.checkFeedbacksById(feedbackId),
+			}))
+		)
 	}
 
 	public async configUpdated(config: ModuleConfig): Promise<void> {
 		if (this._reaper !== null) {
 			await this.disconnectOsc()
+			this.unbindVariables()
 		}
 
 		const reaperConfig = new ReaperConfiguration()
@@ -78,11 +87,11 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 
 	public async destroy(): Promise<void> {
 		await this.disconnectOsc()
+		this.unbindVariables()
 	}
 
 	private afterMessageReceived: (message: OscMessage, handled: boolean) => void = () => {
 		// TODO: implement handlers for custom feedbacks
-		this.checkFeedbacks()
 	}
 
 	private async connectOsc() {
@@ -115,6 +124,8 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 	): void {
 		const variables = GetVariableDefinitions()
 
+		const unsubscribes: Unsubscribe[] = []
+
 		setVariableDefinitions(variables)
 
 		const variableValues: CompanionVariableValues = {}
@@ -123,17 +134,30 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 			const property = variable.getProperty(reaper)
 
 			// Bind the variable to the property
-			property.item.onPropertyChanged(property.property, () => {
+			const unsub = property.item.onPropertyChanged(property.property, () => {
 				setVariableValues({
 					[variable.variableId]: this.getCurrentVariableValue(property, variable.valueConverter),
 				})
 			})
+
+			unsubscribes.push(unsub)
 
 			// Set initial value
 			variableValues[variable.variableId] = this.getCurrentVariableValue(property, variable.valueConverter)
 		})
 
 		setVariableValues(variableValues)
+
+		this._unsubscribeVariables = unsubscribes
+	}
+
+	private unbindVariables(): void {
+		const unsubscribes = this._unsubscribeVariables
+		this._unsubscribeVariables = []
+
+		unsubscribes.forEach((element) => {
+			element()
+		})
 	}
 
 	private getCurrentVariableValue(property: ReaperProperty, valueConverter?: (value: any) => any) {
@@ -146,6 +170,13 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		return value
 	}
 }
+
+export interface ModuleContext {
+	readonly reaper: Reaper
+	readonly log: (level: LogLevel, message: string) => void
+}
+
+type Unsubscribe = () => void
 
 // TODO: upgrade scripts
 runEntrypoint(ControllerInstance, [EmptyUpgradeScript])
