@@ -104,6 +104,7 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 					label: 'Message',
 					id: 'msg',
 					default: '/repeat',
+					required: true,
 				},
 				{
 					type: 'dropdown',
@@ -120,6 +121,7 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 					label: 'Value',
 					id: 'value',
 					default: '1',
+					useVariables: true,
 				},
 			],
 			callback: (evt) => {
@@ -129,21 +131,28 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 
 				return feedback.getState()
 			},
-			subscribe: (evt) => {
+			subscribe: (evt, callbackCtx) => {
 				const context = getContext()
 
 				const state: CustomMessageState = { state: false }
 
 				// TODO: create handler based on type
 				// TODO: clear handlers on destroy
-				const handler = CustomFloatFeedbackHandler(<string>evt.options.msg, <string>evt.options.value, (result) => {
-					if (state.state === result) {
-						return
-					}
+				// TODO: parse address - may need to make a custom handler implementation that takes a function for the address
+				const handler = CustomFloatFeedbackHandler(
+					() => getContext(),
+					<string>evt.options.msg,
+					<string>evt.options.value,
+					(result) => {
+						if (state.state === result) {
+							return
+						}
 
-					state.state = result
-					context.checkFeedback(evt.id)
-				})
+						state.state = result
+						context.checkFeedback(evt.id)
+					},
+					async (value) => callbackCtx.parseVariablesInString(value)
+				)
 
 				context.customMessageFeedbacks[evt.id] = { handler: handler, getState: () => state.state }
 			},
@@ -165,19 +174,39 @@ export function GetFeedbacksList(getContext: () => FeedbackContext): CompanionFe
 	return feedbacks
 }
 
-type CustomMessageState = {
-	state: boolean
-}
+type CustomMessageState = { state: boolean }
 
 function CustomFloatFeedbackHandler(
+	getContext: () => FeedbackContext,
 	address: string,
 	value: string,
-	callback: (state: boolean) => void
+	callback: (state: boolean) => void,
+	parseVariables: (value: string) => Promise<string>
 ): IMessageHandler {
-	const number = parseFloat(value)
-
 	return new FloatMessageHandler(address, (messageValue) => {
-		callback(number === messageValue)
+		parseVariables(value).then(
+			(expanded) => {
+				const number = parseFloat(expanded)
+
+				if (isNaN(number)) {
+					getContext().log(
+						'warn',
+						`value was not a float: ${JSON.stringify({
+							intitial_value: value,
+							expanded: expanded,
+							parsed: number.toString(),
+						})}`
+					)
+					return
+				}
+
+				callback(number === messageValue)
+			},
+			(reason) => {
+				// TODO:
+				getContext().log('error', `error parsing variable for custom message feedback: ${reason}`)
+			}
+		)
 	})
 }
 
