@@ -20,6 +20,7 @@ export enum ActionId {
 	ToggleClick = 'click',
 	ToggleRepeat = 'repeat',
 	GotoMarker = 'goto_marker',
+	EditMarker = 'edit_marker',
 	GotoRegion = 'goto_region',
 
 	// Track
@@ -156,12 +157,80 @@ export function GetActionsList(getContext: () => ActionContext): CompanionAction
 					default: 1,
 					min: 1,
 					max: 1024,
+					isVisible: (opts) => !opts.useVars,
+				},
+				{
+					type: 'textinput',
+					label: 'Marker Number',
+					id: 'markerVar',
+					default: '',
+					useVariables: true,
+					isVisible: (opts) => !!opts.useVars,
+				},
+				{
+					type: 'checkbox',
+					label: 'Use Variable for Marker #',
+					id: 'useVars',
+					default: false,
+				}
+			],
+			callback: async (evt, parsingContext) => {
+				const context = getContext()
+				let marker = evt.options.marker
+				if (evt.options.useVars) {
+					let m = evt.options.markerVar?.toString().trim()
+					marker = await parsingContext.parseVariablesInString(m ?? '')
+				}
+				const message = new OscMessage(`/marker/${marker}`)
+
+				// TODO: replace with built-in when it is supported
+				context.reaper.sendOscMessage(message)
+			},
+		},
+		[ActionId.EditMarker]: {
+			name: 'Add/Edit Marker',
+			options: [
+				{
+					type: 'number',
+					label: 'Marker Number',
+					id: 'marker',
+					default: 1,
+					min: 1,
+					max: 1024,
+					isVisible: (opts) => !opts.useVars,
+				},
+				{
+					type: 'textinput',
+					label: 'Marker Number',
+					id: 'markerVar',
+					default: '',
+					useVariables: true,
+					isVisible: (opts) => !!opts.useVars,
+				},
+				{
+					type: 'checkbox',
+					label: 'Use Variable for Marker #',
+					id: 'useVars',
+					default: false,
+				},
+				{
+					type: 'textinput',
+					label: 'Marker Name',
+					id: 'markerName',
+					default: '',
+					useVariables: true,
 				},
 			],
-			callback: (evt) => {
+			callback: async (evt, parsingContext) => {
 				const context = getContext()
-
-				const message = new OscMessage(`/marker/${evt.options.marker}`)
+				let marker = evt.options.marker
+				let mName = evt.options.markerName?.toString().trim()
+				let markerName = await parsingContext.parseVariablesInString(mName ?? '')
+				if (evt.options.useVars) {
+					let m = evt.options.markerVar?.toString().trim()
+					marker = await parsingContext.parseVariablesInString(m ?? '')
+				}
+				const message = new StringMessage(`/marker_id/${marker}/name`, markerName)
 
 				// TODO: replace with built-in when it is supported
 				context.reaper.sendOscMessage(message)

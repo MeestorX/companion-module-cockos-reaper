@@ -63,6 +63,7 @@ class ControllerInstance extends InstanceBase<ModuleConfig> {
 		reaperConfig.remotePort = config.port
 
 		reaperConfig.afterMessageReceived = (message, handled) => {
+console.log('OSC Message received: ', message)
 			this.handleCustomMessages(message, handled)
 		}
 

@@ -21,6 +21,17 @@ export function GetVariableDefinitions(): ReaperPropertyVariableDefinition[] {
 	return variables
 }
 
+function VariableDefinitions(): ReaperPropertyVariableDefinition[] {
+	const variables: ReaperPropertyVariableDefinition[] = [
+		{
+			variableId: 'playHeadTime',
+			name: 'Playhead Time',
+			getProperty: NotifyPropertySelector<Transport>((reaper) => reaper.transport, 'time'),
+		}
+	]
+	return variables
+}
+
 function LegacyVariableDefinitions(): ReaperPropertyVariableDefinition[] {
 	const variables: ReaperPropertyVariableDefinition[] = [
 		{
